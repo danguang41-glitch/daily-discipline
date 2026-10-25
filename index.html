@@ -1606,6 +1606,39 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
   .pet-stage-wrap.journey-mode, .pet-visual.journey-walk, .pet-visual.journey-fly, .jscenery, .jscene-monster.spawn, .jscene-monster.hit svg.mon, .jscene-monster.dead{ animation:none !important; }
 }
 </style>
+<style>
+/* ===== MOBILE HABIT CARD FIX — 手机上任务卡不再挤成一团 =====
+   之前手机上一行硬塞：金币 + 图标/任务名/评级 + 进度 + 加减按钮 + 置顶 + 删除，
+   主区域被挤到只剩一个字宽，任务名就变成一字一行竖着排，加减按钮还压到进度文字上。
+   现在手机上改成：第一行只放金币 + 任务主体（名字横排、放得下），
+   带次数的任务把加减按钮整组挪到第二行，置顶/删除跟在第二行右侧，不再互相挤压。 */
+@media (max-width:560px){
+  .habit{ flex-wrap:wrap; align-items:flex-start; row-gap:10px; column-gap:9px; }
+  /* 主体保底宽度：名字绝不再被挤成竖排 */
+  .habit .habit-main{ flex:1 1 168px; min-width:168px; }
+  /* 名字行可以换行：评级牌放不下时掉到名字下面，而不是挤压任务名 */
+  .habit .name-row{ flex-wrap:wrap; row-gap:6px; }
+  .habit .name{
+    flex:1 1 auto; min-width:2.6em;
+    white-space:normal; overflow:visible; text-overflow:clip; line-height:1.4;
+  }
+  /* 带加减按钮的任务（目标 > 1 次）：主体独占第一行，加减/置顶/删除排第二行 */
+  .habit:has(.stepper) .habit-main{ flex:1 1 calc(100% - 57px); min-width:0; }
+  .habit .stepper{ order:6; flex:none; margin-left:57px; }
+  .habit .hstreak{ order:5; align-self:center; }
+  .habit .pin{ order:7; flex:none; margin-left:auto; }
+  .habit .del{ order:8; flex:none; }
+  /* 没换行时（一次性/单次任务一行放得下）置顶、删除保持在行尾，不额外占高 */
+  .habit:not(:has(.stepper)) .pin{ margin-left:0; }
+  .habit:not(:has(.stepper)) .habit-main{ min-width:150px; }
+}
+@media (max-width:380px){
+  .habit .stepper{ margin-left:53px; }
+  .habit:has(.stepper) .habit-main{ flex-basis:calc(100% - 53px); }
+}
+/* 鼓励弹幕只在屏幕上方区域飘，不再压到任务卡片和按钮上 */
+.danmaku-item{ max-width:88vw; }
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -4448,7 +4481,7 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     var c = DM_COLORS[dmColorIdx++ % DM_COLORS.length];
     el.style.background = c.bg;
     el.style.color = c.fg;
-    el.style.top = (4 + Math.random() * 52) + "%";
+    el.style.top = (15 + Math.random() * 10) + "%";
     el.style.animationDuration = (8 + Math.random() * 5) + "s";
     el.textContent = text;
     el.addEventListener("animationend", function(){ if (el.parentNode) el.parentNode.removeChild(el); });
