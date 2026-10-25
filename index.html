@@ -1467,6 +1467,145 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
 }
 @media (prefers-reduced-motion: reduce){ .offline-dot{ box-shadow:none; } }
 </style>
+<style>
+/* ===== TASK SORT & FILTER — 已完成自动沉到每组最下面 + 未完成/已完成筛选 ===== */
+.task-filter-bar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:26px 0 0; }
+.task-filter-bar + .sec-head{ margin-top:12px; }
+.task-filter-btn{
+  flex:1 1 0; min-width:0; min-height:48px; padding:6px 4px;
+  border:3px solid #000; background:#443763; color:#d5c9eb;
+  font-family:inherit; font-size:14px; font-weight:800; cursor:pointer;
+  box-shadow:0 3px 0 #000; white-space:nowrap;
+}
+.task-filter-btn:active{ transform:translateY(3px); box-shadow:0 0 0 #000; }
+.task-filter-btn.on{ background:#cf5c88; color:#fff; text-shadow:1px 1px 0 rgba(0,0,0,.4); }
+.task-filter-btn .fcnt{
+  display:inline-block; min-width:22px; padding:1px 5px; margin-left:5px;
+  background:#241c38; color:#eccd7d; border:2px solid #000;
+  font-family:monospace; font-size:11px; line-height:1.4; text-align:center;
+}
+.task-filter-btn.on .fcnt{ background:#eccd7d; color:#000; }
+.task-filter-note{ width:100%; font-size:12px; color:#b7a5d6; line-height:1.55; }
+/* ===== JOURNEY LIVE SCENE — 游历实况：小蛋在路上走路，前面刷怪，放技能打败它们 ===== */
+.pet-stage-wrap.journey-mode{
+  box-shadow:inset 0 0 0 3px #000;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.3) 0 3px, transparent 3px 44px) bottom left / 100% 30px no-repeat,
+    repeating-linear-gradient(90deg, #5d4a2a 0 22px, #4c3b20 22px 44px) bottom left / 100% 30px no-repeat,
+    linear-gradient(180deg, #3f96d2 0%, #6db3e6 42%, #a8dcf5 62%, #79c26e 62%, #57a95c 82%, #3e8a49 100%);
+  background-color:#6db3e6;
+  animation:jRoadScroll .55s linear infinite;
+  justify-content:flex-start;
+}
+@keyframes jRoadScroll{ from{ background-position:0 100%, 0 100%, 0 0; } to{ background-position:-44px 100%, -44px 100%, 0 0; } }
+.pet-stage-wrap.journey-mode .pet-visual{ margin-left:3%; }
+.pet-visual.journey-walk{ position:relative; z-index:2; animation:jWalkBob .42s steps(2) infinite !important; }
+@keyframes jWalkBob{ 0%{ transform:translateY(-30px) rotate(0deg); } 28%{ transform:translateY(0) scaleY(.94) rotate(0deg); } 55%,100%{ transform:translateY(0) rotate(-2deg); } 78%{ transform:translateY(-7px) rotate(2deg); } }
+.pet-visual.journey-walk .d-wing-l, .pet-visual.journey-walk .d-wing-r{ animation-duration:.3s; }
+/* 游历风景层：蓝天里飘白云，远处小山、近处树和草丛从右往左流过，走路飞天都看得见 */
+.jscene-bg{ display:none; position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+.pet-stage-wrap.journey-mode .jscene-bg{ display:block; }
+.jscenery{ position:absolute; left:104%; line-height:0; animation:jSceneryMove linear infinite; will-change:left; }
+.jscenery svg{ display:block; image-rendering:pixelated; shape-rendering:crispEdges; }
+@keyframes jSceneryMove{ from{ left:104%; } to{ left:-34%; } }
+.pet-stage-wrap.journey-mode .pet-shadow{ transition:transform .45s ease, opacity .45s ease; }
+.pet-stage-wrap.journey-flying .pet-shadow{ transform:translateX(-50%) scale(.5); opacity:.45; }
+/* 飞天赶路：小蛋是龙，走一段就扇翅飞一段，影子变小、翅膀扇得更快 */
+.pet-visual.journey-fly{ position:relative; z-index:2; animation:jFlyBob 1.5s ease-in-out infinite !important; }
+@keyframes jFlyBob{ 0%{ transform:translateY(-8px) rotate(-2deg); } 22%{ transform:translateY(-72px) rotate(-3deg); } 55%{ transform:translateY(-90px) rotate(2deg); } 80%{ transform:translateY(-70px) rotate(-2deg); } 100%{ transform:translateY(-80px) rotate(0deg); } }
+.pet-visual.journey-fly .d-wing-l, .pet-visual.journey-fly .d-wing-r{ animation-duration:.22s; }
+.jscene-monster.air{ bottom:132px; }
+.jscene-fx.air{ bottom:182px; }
+.jscene{ position:absolute; inset:0; overflow:visible; pointer-events:none; z-index:3; }
+.jscene[hidden]{ display:none !important; }
+.jscene-log{
+  position:absolute; top:2px; left:50%; transform:translateX(-50%); z-index:6;
+  max-width:97%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-size:11px; font-weight:800; line-height:1.5; color:#000;
+  background:#eccd7d; border:3px solid #000; box-shadow:0 3px 0 #000; padding:5px 8px;
+}
+.jscene-monster{ position:absolute; bottom:32px; right:4%; width:72px; height:72px; z-index:3; transition:right .5s steps(5); }
+.jscene-monster[hidden]{ display:none !important; }
+.jscene-monster svg.mon{ width:72px; height:72px; display:block; image-rendering:pixelated; shape-rendering:crispEdges; filter:drop-shadow(3px 3px 0 rgba(0,0,0,.4)); }
+.jscene-monster.spawn{ animation:mSpawnA .45s steps(4); }
+@keyframes mSpawnA{ from{ transform:translateY(-18px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+.jscene-monster.hit svg.mon{ animation:mHitA .3s steps(2); }
+@keyframes mHitA{ 0%{ transform:translateX(0); filter:brightness(2.2); } 50%{ transform:translateX(8px); } 100%{ transform:translateX(0); } }
+.jscene-monster.dead{ animation:mDieA .55s steps(4) forwards; }
+@keyframes mDieA{ to{ transform:translateY(16px) scale(.45) rotate(16deg); opacity:0; } }
+.jscene-mname{
+  position:absolute; top:-32px; left:50%; transform:translateX(-50%); white-space:nowrap;
+  font-size:10px; font-weight:800; color:#fff; background:#262038; border:2px solid #000; padding:2px 6px;
+}
+.jscene-mhp{ position:absolute; top:-13px; left:8px; right:8px; height:9px; background:#241c38; border:2px solid #000; }
+.jscene-mhp i{ display:block; height:100%; background:#d14d74; transition:width .3s steps(3); }
+.jscene-fx{ position:absolute; bottom:98px; left:30%; width:48px; height:30px; z-index:4; opacity:0; transition:left .45s steps(6), opacity .15s; }
+.jscene-fx[hidden]{ display:none !important; }
+.jscene-fx.on{ opacity:1; }
+.jscene-fx svg{ width:48px; height:30px; display:block; image-rendering:pixelated; shape-rendering:crispEdges; }
+/* ===== CUSTOM TIMER + FINISH CHEER — 自定义分钟/秒 + 倒计时结束的小鼓励 ===== */
+.custom-time{
+  display:flex; align-items:center; justify-content:center; gap:7px; flex-wrap:wrap;
+  margin:-6px 0 16px;
+}
+.ct-label{ font-size:13px; font-weight:800; color:#e79bbd; }
+.custom-time input{
+  width:64px; height:44px; text-align:center;
+  border:3px solid #000; background:#262038; color:#fff;
+  box-shadow:inset 3px 3px 0 rgba(0,0,0,.6);
+  font-size:16px; font-weight:700; font-variant-numeric:tabular-nums;
+  outline:none; font-family:inherit; padding:0;
+  -moz-appearance:textfield; appearance:textfield;
+}
+.custom-time input::-webkit-outer-spin-button, .custom-time input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+.custom-time input:focus{ border-color:#cf5c88; box-shadow:inset 3px 3px 0 rgba(0,0,0,.6),0 0 0 2px #cf5c88; }
+.custom-time input::placeholder{ color:#8d7fb0; }
+.ct-unit{ font-size:13px; color:#cdc2e2; font-weight:700; }
+.ct-btn{
+  border:3px solid #000; background:#8265c4; color:#fff; min-height:44px; padding:0 14px;
+  font-size:13.5px; font-weight:800; cursor:pointer; font-family:inherit; box-shadow:0 3px 0 #000;
+  text-shadow:1px 1px 0 rgba(0,0,0,.4);
+}
+.ct-btn:active{ transform:translateY(3px); box-shadow:0 0 0 #000; }
+.timer-cheer{
+  margin-top:16px; padding:13px 14px;
+  background:#453a22; border:3px solid #000; box-shadow:0 4px 0 #000, inset 0 0 0 2px #eccd7d;
+  color:#fff3c4; font-size:15px; font-weight:800; line-height:1.65;
+}
+.timer-cheer[hidden]{ display:none !important; }
+/* ===== OUTFIT SHOP — 金币装扮店：预览就是穿在小蛋身上的像素装扮 ===== */
+.shop-card{ background:#33264e !important; box-shadow:0 6px 0 #000, inset 0 0 0 2px #eccd7d; }
+.shop-balance{ font-size:13px; color:#d5c9eb; line-height:1.65; margin-bottom:14px; }
+.shop-balance b{ color:#eccd7d; font-variant-numeric:tabular-nums; }
+.shop-grid{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.shop-item{
+  display:flex; flex-direction:column; gap:7px;
+  background:#372c50; border:3px solid #000; box-shadow:0 3px 0 #000, inset 0 0 0 2px #4e3a70;
+  padding:10px;
+}
+.shop-prev{
+  height:64px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(180deg,#6db3e6 0%,#a8dcf5 70%,#79c26e 70%,#57a95c 100%);
+  border:2px solid #000; overflow:hidden;
+}
+.shop-prev svg{ height:58px; width:auto; display:block; image-rendering:pixelated; shape-rendering:crispEdges; }
+.shop-name{ font-size:14px; font-weight:800; color:#fff; }
+.shop-meta{ font-size:11.5px; color:#b7a5d6; }
+.shop-btn{
+  margin-top:auto; border:3px solid #000; min-height:42px; padding:0 8px;
+  background:#eccd7d; color:#000; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit;
+  box-shadow:0 3px 0 #000;
+}
+.shop-btn:active{ transform:translateY(3px); box-shadow:0 0 0 #000; }
+.shop-btn:disabled{ background:#443763; color:#ae9dcb; box-shadow:none; cursor:default; }
+.shop-btn:disabled:active{ transform:none; }
+.shop-btn.worn{ background:#cf5c88; color:#fff; text-shadow:1px 1px 0 rgba(0,0,0,.4); }
+.shop-btn.equip{ background:#8265c4; color:#fff; text-shadow:1px 1px 0 rgba(0,0,0,.4); }
+@media (max-width:380px){ .shop-grid{ grid-template-columns:1fr 1fr; gap:7px; } .shop-prev{ height:54px; } .shop-prev svg{ height:48px; } }
+@media (prefers-reduced-motion: reduce){
+  .pet-stage-wrap.journey-mode, .pet-visual.journey-walk, .pet-visual.journey-fly, .jscenery, .jscene-monster.spawn, .jscene-monster.hit svg.mon, .jscene-monster.dead{ animation:none !important; }
+}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -1509,7 +1648,6 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     <span class="pet-tab-badge" id="parcelTabBadge" hidden>0</span>
   </button>
 </nav>
-  <div class="offline-bar" id="offlineBar" role="status" aria-live="polite" hidden><span class="offline-dot" aria-hidden="true"></span><span id="offlineBarText">离线准备中…</span></div>
   <div class="board" id="boardTasks">
   <section class="card progress-card" aria-label="今日进度">
     <div class="ring-wrap">
@@ -1553,6 +1691,12 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     </div>
   </div>
 
+  <div class="task-filter-bar" role="group" aria-label="按完成状态看任务">
+    <button type="button" class="task-filter-btn on" data-filter="all" aria-pressed="true">全部<span class="fcnt" id="fltAllCount">0</span></button>
+    <button type="button" class="task-filter-btn" data-filter="todo" aria-pressed="false">未完成<span class="fcnt" id="fltTodoCount">0</span></button>
+    <button type="button" class="task-filter-btn" data-filter="done" aria-pressed="false">已完成<span class="fcnt" id="fltDoneCount">0</span></button>
+    <div class="task-filter-note">点上面只看未完成或已完成；不管看哪种，做完的事情都会自动排到每组最下面，没做完的留在上面先做。</div>
+  </div>
   <div class="sec-head">
     <h2>每日习惯</h2>
     <span class="hint">每天重复 · 第二天自动清零</span>
@@ -1630,10 +1774,19 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       <button type="button" class="chip" data-min="45">45 分钟</button>
       <button type="button" class="chip" data-min="60">60 分钟</button>
     </div>
+    <div class="custom-time">
+      <span class="ct-label">自定义</span>
+      <input id="ctMin" type="number" inputmode="numeric" min="0" max="999" step="1" placeholder="0" aria-label="自定义分钟数" />
+      <span class="ct-unit">分</span>
+      <input id="ctSec" type="number" inputmode="numeric" min="0" max="5999" step="1" placeholder="0" aria-label="自定义秒数" />
+      <span class="ct-unit">秒</span>
+      <button type="button" class="ct-btn" id="ctApply">用这个时长</button>
+    </div>
     <div class="timer-btns">
       <button type="button" class="btn btn-green" id="startPauseBtn">开始专注</button>
       <button type="button" class="btn btn-ghost" id="resetBtn">重置</button>
     </div>
+    <div class="timer-cheer" id="timerCheer" hidden></div>
     <div class="today-focus">今天已专注 <b id="todayFocus">0</b> 分钟 · 累计 <b id="totalFocus">0</b> 分钟</div>
   </section>
 
@@ -1705,7 +1858,24 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
   </div>
   <section class="card pet-card" aria-label="小宠物像素龙">
     <div class="pet-top">
-      <div class="pet-stage-wrap">
+      <div class="pet-stage-wrap" id="petStageWrap">
+        <div class="jscene-bg" id="journeyBg" aria-hidden="true">
+          <span class="jscenery" style="top:12px; animation-duration:38s; animation-delay:-6s;"><svg viewBox="0 0 84 30" width="84" height="30"><rect x="10" y="18" width="64" height="10" fill="#ffffff"/><rect x="22" y="8" width="40" height="12" fill="#ffffff"/><rect x="30" y="2" width="24" height="8" fill="#ffffff"/><rect x="10" y="24" width="64" height="4" fill="#bfe6f7"/></svg></span>
+          <span class="jscenery" style="top:42px; animation-duration:54s; animation-delay:-32s;"><svg viewBox="0 0 84 30" width="58" height="21"><rect x="10" y="18" width="64" height="10" fill="#ffffff"/><rect x="22" y="8" width="40" height="12" fill="#ffffff"/><rect x="30" y="2" width="24" height="8" fill="#ffffff"/><rect x="10" y="24" width="64" height="4" fill="#bfe6f7"/></svg></span>
+          <span class="jscenery" style="top:3px; animation-duration:30s; animation-delay:-19s;"><svg viewBox="0 0 84 30" width="104" height="37"><rect x="10" y="18" width="64" height="10" fill="#ffffff"/><rect x="22" y="8" width="40" height="12" fill="#ffffff"/><rect x="30" y="2" width="24" height="8" fill="#ffffff"/><rect x="10" y="24" width="64" height="4" fill="#bfe6f7"/></svg></span>
+          <span class="jscenery" style="bottom:29px; animation-duration:36s; animation-delay:-14s;"><svg viewBox="0 0 130 46" width="150" height="53"><polygon points="0,46 38,10 65,30 88,14 130,46" fill="#4f9e57"/><polygon points="0,46 38,10 52,26 30,46" fill="#438a4a"/></svg></span>
+          <span class="jscenery" style="bottom:29px; animation-duration:48s; animation-delay:-36s;"><svg viewBox="0 0 130 46" width="105" height="37"><polygon points="0,46 38,10 65,30 88,14 130,46" fill="#57a95c"/><polygon points="0,46 38,10 52,26 30,46" fill="#4f9e57"/></svg></span>
+          <span class="jscenery" style="bottom:27px; animation-duration:13s; animation-delay:-3s;"><svg viewBox="0 0 40 56" width="40" height="56"><rect x="18" y="38" width="5" height="16" fill="#7a4a21"/><rect x="16" y="52" width="9" height="3" fill="#5d3717"/><rect x="12" y="22" width="16" height="14" fill="#2f8f4e"/><rect x="8" y="28" width="24" height="12" fill="#3fae5a"/><rect x="15" y="12" width="11" height="12" fill="#3fae5a"/><rect x="18" y="6" width="5" height="8" fill="#57c46e"/><rect x="12" y="26" width="3" height="3" fill="#7dff9a"/><rect x="24" y="32" width="3" height="3" fill="#7dff9a"/></svg></span>
+          <span class="jscenery" style="bottom:27px; animation-duration:17s; animation-delay:-11s;"><svg viewBox="0 0 40 56" width="30" height="42"><rect x="18" y="38" width="5" height="16" fill="#7a4a21"/><rect x="16" y="52" width="9" height="3" fill="#5d3717"/><rect x="12" y="22" width="16" height="14" fill="#2f8f4e"/><rect x="8" y="28" width="24" height="12" fill="#3fae5a"/><rect x="15" y="12" width="11" height="12" fill="#3fae5a"/><rect x="18" y="6" width="5" height="8" fill="#57c46e"/><rect x="12" y="26" width="3" height="3" fill="#7dff9a"/><rect x="24" y="32" width="3" height="3" fill="#7dff9a"/></svg></span>
+          <span class="jscenery" style="bottom:27px; animation-duration:11.5s; animation-delay:-7s;"><svg viewBox="0 0 40 56" width="48" height="67"><rect x="18" y="38" width="5" height="16" fill="#7a4a21"/><rect x="16" y="52" width="9" height="3" fill="#5d3717"/><rect x="12" y="22" width="16" height="14" fill="#2f8f4e"/><rect x="8" y="28" width="24" height="12" fill="#3fae5a"/><rect x="15" y="12" width="11" height="12" fill="#3fae5a"/><rect x="18" y="6" width="5" height="8" fill="#57c46e"/><rect x="12" y="26" width="3" height="3" fill="#7dff9a"/><rect x="24" y="32" width="3" height="3" fill="#7dff9a"/></svg></span>
+          <span class="jscenery" style="bottom:27px; animation-duration:12s; animation-delay:-5s;"><svg viewBox="0 0 36 18" width="36" height="18"><rect x="4" y="8" width="28" height="9" fill="#2f8f4e"/><rect x="10" y="3" width="16" height="8" fill="#3fae5a"/><rect x="7" y="10" width="3" height="3" fill="#7dff9a"/><rect x="24" y="11" width="3" height="3" fill="#7dff9a"/></svg></span>
+          <span class="jscenery" style="bottom:27px; animation-duration:15s; animation-delay:-12s;"><svg viewBox="0 0 36 18" width="26" height="13"><rect x="4" y="8" width="28" height="9" fill="#2f8f4e"/><rect x="10" y="3" width="16" height="8" fill="#3fae5a"/><rect x="7" y="10" width="3" height="3" fill="#7dff9a"/><rect x="24" y="11" width="3" height="3" fill="#7dff9a"/></svg></span>
+        </div>
+        <div class="jscene" id="journeyScene" hidden aria-hidden="true">
+          <div class="jscene-log" id="journeyLog">小蛋出发啦！</div>
+          <div class="jscene-monster" id="journeyMonster" hidden></div>
+          <div class="jscene-fx" id="journeyFx" hidden></div>
+        </div>
         <div class="pet-eat-status" id="petEatStatus" hidden>正在吃零食…</div>
         <div class="pet-play-chooser" id="petPlayChooser" hidden>
           <span class="ppc-label">跟小蛋玩：</span>
@@ -1734,12 +1904,15 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     <div class="snack-box" id="snackBox" aria-label="零食库存"></div>
     <div class="snack-total-row">
       <span class="snack-pill">
+        金币 <b id="coinCount">0</b>
+      </span>
+      <span class="snack-pill">
         零食共 <b id="snackCount">0</b> 个
       </span>
       <button type="button" class="feed-btn ghost" id="feedAllBtn" hidden>全部喂食</button>
     </div>
     <div class="feed-queue" id="feedQueue" hidden><span class="fq-label">排队等吃：</span><span class="fq-items" id="feedQueueItems"></span></div>
-    <p class="pet-how">任务由系统按名字自动评级，评级就标在每个任务上：喝水、吃鱼油这类小事是 ★ 简单，完成得星星饼干（+10 经验）；一般任务是 ★★ 普通，得烤肉串（+18）；运动、学习、阅读这类费时费力的任务是 ★★★ 困难，得黄金鸡腿（+30）。今天的每日习惯全部完成，再奖励 1 个稀有零食龙焰果（+25）。点某个零食的「喂」，它会放到小蛋面前一口一口慢慢吃完、咽下去，才按这个零食的经验结算；「全部喂食」就是排队一个一个慢慢吃。进化路线：幼龙 → Lv.16 青年龙 → Lv.36 战龙 → Lv.100 龙王。它只在原地扇翅膀、眨眼睛、吃东西，不会跑走。</p>
+    <p class="pet-how">任务由系统按名字自动评级，评级就标在每个任务上：喝水、吃鱼油这类小事是 ★ 简单，完成得星星饼干（+10 经验）；一般任务是 ★★ 普通，得烤肉串（+18）；运动、学习、阅读这类费时费力的任务是 ★★★ 困难，得黄金鸡腿（+30）。今天的每日习惯全部完成，再奖励 1 个稀有零食龙焰果（+25）。点某个零食的「喂」，它会放到小蛋面前一口一口慢慢吃完、咽下去，才按这个零食的经验结算；「全部喂食」就是排队一个一个慢慢吃。进化路线：幼龙 → Lv.16 青年龙 → Lv.36 战龙 → Lv.100 龙王。在家时它只在原地扇翅膀、眨眼睛、吃东西；出去游历时能在上面的舞台里走一段、飞一段打怪，还能赚金币带回来，去下面的装扮店给它买帽子、围巾、墨镜这些装扮穿上。</p>
   </section>
 
   <div class="sec-head">
@@ -1753,6 +1926,15 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       <div class="journal-title">游历记录</div>
       <div class="journal-list" id="journalList"></div>
     </div>
+  </section>
+
+  <div class="sec-head">
+    <h2>小蛋装扮店</h2>
+    <span class="hint">游历赚金币 · 买装扮穿上</span>
+  </div>
+  <section class="card shop-card" aria-label="小蛋装扮店">
+    <div class="shop-balance">金币 <b id="shopCoinCount">0</b> · 小蛋游历回来、路上打怪都能赚金币；买下装扮就能给它穿上，同部位只能穿一件，点已穿的可以脱下</div>
+    <div class="shop-grid" id="shopGrid"></div>
   </section>
 
   <div class="sec-head">
@@ -1897,7 +2079,8 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       bestStreak: 0,
       soundOn: true,
       pet: { snacks: 0, exp: 0, totalFed: 0, snackBox: { biscuit: 0, meat: 0, drumstick: 0, fruit: 0 },
-             journey: null, journal: [], souvenirs: [], journeyCount: 0, battleWins: 0, rareFinds: 0, tasted: {} },
+             journey: null, journal: [], souvenirs: [], journeyCount: 0, battleWins: 0, rareFinds: 0, tasted: {},
+             coins: 0, ownedOutfits: [], outfit: { head: "", face: "", neck: "", back: "" } },
       parcels: [],       // [{ id, name, code, cabinet, createdKey, picked }] 快递取件记录，只存这台手机
       quotes: DEFAULT_QUOTES.slice(),
       danmakuOn: true,
@@ -1974,9 +2157,19 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       var legacy = nn(p.snacks);
       if (legacy > total){ box.biscuit += legacy - total; total = legacy; }
     }
+    var owned = [];
+    if (Array.isArray(p.ownedOutfits)) p.ownedOutfits.forEach(function(k){ if (OUTFIT_MAP[k] && owned.indexOf(k) === -1) owned.push(k); });
+    var outfit = { head: "", face: "", neck: "", back: "" };
+    if (p.outfit && typeof p.outfit === "object"){
+      Object.keys(outfit).forEach(function(slot){
+        var k = p.outfit[slot];
+        if (k && OUTFIT_MAP[k] && OUTFIT_MAP[k].slot === slot && owned.indexOf(k) !== -1) outfit[slot] = k;
+      });
+    }
     return { snacks: total, exp: nn(p.exp), totalFed: nn(p.totalFed), snackBox: box,
              journey: normJourney(p.journey), journal: normJournal(p.journal), souvenirs: normSouvenirs(p.souvenirs),
-             journeyCount: nn(p.journeyCount), battleWins: nn(p.battleWins), rareFinds: nn(p.rareFinds), tasted: normTasted(p.tasted) };
+             journeyCount: nn(p.journeyCount), battleWins: nn(p.battleWins), rareFinds: nn(p.rareFinds), tasted: normTasted(p.tasted),
+             coins: nn(p.coins), ownedOutfits: owned, outfit: outfit };
   }
   function ensureFlags(){
     if (!state.flags || typeof state.flags !== "object") state.flags = {};
@@ -2084,6 +2277,43 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       if (pa !== pb) return pa - pb;
       return cmp ? cmp(a, b) : 0;
     });
+  }
+  // 某习惯今天算不算已完成（排序/筛选用，口径和行渲染一致）：
+  // 每日/一次性看次数是否达标，间隔任务看是否在等待期（已做完、下次还没到期）
+  function habitDoneToday(h, rec){
+    if (habitType(h) === "interval") return intervalStatus(h).state === "waiting";
+    return countOn(rec, h) >= habitTarget(h);
+  }
+  // 展示排序：未完成在前，已完成自动沉到每组最下面；同组内仍是置顶优先，再按传入的次序规则
+  function displaySorted(arr, rec, cmp){
+    return arr.slice().sort(function(a, b){
+      var da = habitDoneToday(a, rec) ? 1 : 0, db = habitDoneToday(b, rec) ? 1 : 0;
+      if (da !== db) return da - db;
+      var pa = a.pinned ? 0 : 1, pb = b.pinned ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return cmp ? cmp(a, b) : 0;
+    });
+  }
+  // 当前筛选：all = 全部 / todo = 未完成 / done = 已完成（只记在本次打开里，不存档）
+  var taskFilter = "all";
+  function matchTaskFilter(h, rec){
+    if (taskFilter === "all") return true;
+    var done = habitDoneToday(h, rec);
+    return taskFilter === "done" ? done : !done;
+  }
+  function syncTaskFilterUI(rec){
+    document.querySelectorAll(".task-filter-btn").forEach(function(b){
+      var on = b.getAttribute("data-filter") === taskFilter;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    if (!rec) rec = dayRec(todayKey());
+    var doneN = 0;
+    state.habits.forEach(function(h){ if (habitDoneToday(h, rec)) doneN++; });
+    var ac = $("fltAllCount"), tc = $("fltTodoCount"), dc = $("fltDoneCount");
+    if (ac) ac.textContent = state.habits.length;
+    if (tc) tc.textContent = state.habits.length - doneN;
+    if (dc) dc.textContent = doneN;
   }
 
   /* ---------- 间隔任务：每 N 天一次 ----------
@@ -2359,6 +2589,39 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       + R(4,22,38,4,"#9d86cf") + R(8,26,30,3,"#584b7d");
   }
 
+  /* ---------- 小蛋装扮：游历赚金币买装扮，穿在身上（同部位只能穿一件） ---------- */
+  var OUTFITS = [
+    { key: "bow", name: "蝴蝶结", slot: "head", slotName: "头饰", price: 30, pvb: "55 5 70 35" },
+    { key: "cap", name: "鸭舌帽", slot: "head", slotName: "头饰", price: 50, pvb: "20 0 80 40" },
+    { key: "scarf", name: "红围巾", slot: "neck", slotName: "脖子", price: 60, pvb: "25 50 70 45" },
+    { key: "glasses", name: "酷墨镜", slot: "face", slotName: "脸部", price: 80, pvb: "25 32 70 28" },
+    { key: "backpack", name: "探险背包", slot: "back", slotName: "背部", price: 100, pvb: "78 45 46 60" },
+    { key: "wizard", name: "巫师帽", slot: "head", slotName: "头饰", price: 120, pvb: "25 0 70 40" },
+    { key: "necklace", name: "金项链", slot: "neck", slotName: "脖子", price: 150, pvb: "35 52 50 40" },
+    { key: "crown", name: "黄金皇冠", slot: "head", slotName: "头饰", price: 300, pvb: "30 0 60 35" }
+  ];
+  var OUTFIT_MAP = {};
+  OUTFITS.forEach(function(o){ OUTFIT_MAP[o.key] = o; });
+  // 装扮画在和龙身同一个 24×24 粗网格上，坐标对准头/脸/脖子/背侧，穿上就贴在小蛋身上
+  function outfitItemSVG(key){
+    function G(gx, gy, gw, gh, c){ return '<rect x="' + gx * 5 + '" y="' + gy * 5 + '" width="' + gw * 5 + '" height="' + gh * 5 + '" fill="' + c + '"/>'; }
+    if (key === "bow") return G(13,3,3,3,"#cf5c88") + G(17,3,3,3,"#cf5c88") + G(14,4,1,1,"#e79bbd") + G(18,4,1,1,"#e79bbd") + G(16,4,1,1,"#eccd7d");
+    if (key === "cap") return G(8,2,8,1,"#6fa8cf") + G(7,3,10,2,"#6fa8cf") + G(6,5,12,1,"#57a7d9") + G(11,1,2,1,"#eccd7d");
+    if (key === "scarf") return G(7,12,10,2,"#c04545") + G(7,12,10,1,"#d14d74") + G(15,14,2,3,"#c04545") + G(15,16,2,1,"#eccd7d");
+    if (key === "glasses") return G(6,8,1,1,"#14100e") + G(17,8,1,1,"#14100e") + G(7,8,4,2,"#14100e") + G(13,8,4,2,"#14100e") + G(11,8,2,1,"#14100e") + G(8,8,1,1,"#6fa8cf") + G(14,8,1,1,"#6fa8cf");
+    if (key === "backpack") return G(18,11,4,2,"#3aa79b") + G(18,13,4,6,"#96602a") + G(18,13,4,2,"#b57f22") + G(19,15,2,2,"#7a4a21") + G(17,13,1,6,"#7a4a21");
+    if (key === "wizard") return G(10,0,4,1,"#443763") + G(9,1,5,1,"#443763") + G(9,2,4,1,"#443763") + G(8,3,5,1,"#443763") + G(8,4,4,1,"#eccd7d") + G(6,5,12,1,"#443763") + G(10,2,1,1,"#eccd7d");
+    if (key === "necklace") return G(9,12,1,1,"#e8b93e") + G(14,12,1,1,"#e8b93e") + G(10,13,4,1,"#e8b93e") + G(11,14,2,2,"#eccd7d") + G(11,14,1,1,"#cf5c88");
+    if (key === "crown") return G(8,1,2,2,"#e8b93e") + G(11,1,2,2,"#e8b93e") + G(14,1,2,2,"#e8b93e") + G(8,3,8,2,"#e8b93e") + G(11,3,2,1,"#cf5c88") + G(9,3,1,1,"#6fa8cf") + G(14,3,1,1,"#6fa8cf");
+    return "";
+  }
+  function outfitLayer(){
+    if (!state || !state.pet || !state.pet.outfit) return "";
+    var o = state.pet.outfit, s = "";
+    ["back", "neck", "face", "head"].forEach(function(slot){ if (o[slot]) s += outfitItemSVG(o[slot]); });
+    return s;
+  }
+
   function petSVG(stage){
     // 小蛋：银白配色、大翅膀、长尾带火焰尖的像素大龙。整只龙画在 24×24 粗网格上（每格 5px），
     // 大颗粒 8-bit，纯方块拼图不做平滑；阶段越高鳞片越亮、体型越大、气场越强
@@ -2429,7 +2692,7 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
         + "</g>";
       return '<svg viewBox="0 0 120 120" aria-hidden="true">'
         + '<g class="d-bob"><g transform="translate(60 64) scale(' + scale + ') translate(-60 -64)">'
-        + baby
+        + baby + outfitLayer()
         + "</g></g>"
         + '<rect class="d-flash" x="16" y="8" width="88" height="106" fill="#ffffff" opacity="0"/>'
         + "</svg>";
@@ -2486,7 +2749,7 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     return '<svg viewBox="0 0 120 120" aria-hidden="true">'
       + aura
       + '<g class="d-bob"><g transform="translate(60 64) scale(' + scale + ') translate(-60 -64)">'
-      + inner
+      + inner + outfitLayer()
       + "</g></g>"
       + '<rect class="d-flash" x="16" y="8" width="88" height="106" fill="#ffffff" opacity="0"/>'
       + "</svg>";
@@ -2909,49 +3172,45 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
   }
 
   function renderHabits(){
+    var rec = dayRec(todayKey());
+    syncTaskFilterUI(rec);
     habitListEl.innerHTML = "";
     if (onceListEl) onceListEl.innerHTML = "";
-    var rec = dayRec(todayKey());
-    var daily = dailyHabits();
-    var once = onceHabits();
-    if (!daily.length){
-      var e1 = document.createElement("div");
-      e1.className = "empty-note";
-      e1.textContent = "还没有每日习惯。在下面选「每日重复」，加一个今天就能做到的小目标。";
-      habitListEl.appendChild(e1);
-    } else {
-      pinSorted(daily).forEach(function(h){ habitListEl.appendChild(createHabitRow(h, rec)); });
-    }
-    if (onceListEl){
-      if (!once.length){
-        var e2 = document.createElement("div");
-        e2.className = "empty-note small";
-        e2.textContent = "暂时没有一次性任务。选「做完删除」添加，完成后会自动消失。";
-        onceListEl.appendChild(e2);
-      } else {
-        // 逾期的排前面：创建越早越靠前，先清旧账
-        var sortedOnce = pinSorted(once, function(a, b){
-          return String(a.createdKey || "") < String(b.createdKey || "") ? -1 : 1;
-        });
-        sortedOnce.forEach(function(h){ onceListEl.appendChild(createHabitRow(h, rec)); });
+    if (intervalListEl) intervalListEl.innerHTML = "";
+    // 每组都按当前筛选渲染：未完成排前面、已完成自动沉到最下面（见 displaySorted）
+    function fillList(el, arr, emptyText, filterEmptyText, cmp, big){
+      if (!el) return;
+      if (!arr.length){
+        var e0 = document.createElement("div");
+        e0.className = "empty-note" + (big ? "" : " small");
+        e0.textContent = emptyText;
+        el.appendChild(e0);
+        return;
       }
-    }
-    if (intervalListEl){
-      intervalListEl.innerHTML = "";
-      var intervals = intervalHabits();
-      if (!intervals.length){
-        var e3 = document.createElement("div");
-        e3.className = "empty-note small";
-        e3.textContent = "暂时没有间隔任务。选「间隔重复」添加，比如每 3 天刮一次胡子。";
-        intervalListEl.appendChild(e3);
-      } else {
-        // 逾期和今天该做的排前面，其余按下次到期先后排
-        var sortedInt = pinSorted(intervals, function(a, b){
-          return intervalStatus(a).daysUntil - intervalStatus(b).daysUntil;
-        });
-        sortedInt.forEach(function(h){ intervalListEl.appendChild(createHabitRow(h, rec)); });
+      var shown = arr.filter(function(h){ return matchTaskFilter(h, rec); });
+      if (!shown.length){
+        var e1 = document.createElement("div");
+        e1.className = "empty-note small";
+        e1.textContent = filterEmptyText;
+        el.appendChild(e1);
+        return;
       }
+      displaySorted(shown, rec, cmp).forEach(function(h){ el.appendChild(createHabitRow(h, rec)); });
     }
+    fillList(habitListEl, dailyHabits(),
+      "还没有每日习惯。在下面选「每日重复」，加一个今天就能做到的小目标。",
+      taskFilter === "done" ? "今天还没有已完成的每日习惯，先去做完一项，它会自动排到最下面。" : "太稳了，今天的每日习惯全部完成了！",
+      null, true);
+    fillList(onceListEl, onceHabits(),
+      "暂时没有一次性任务。选「做完删除」添加，完成后会自动消失。",
+      taskFilter === "done" ? "还没有已完成的一次性任务（做完会立刻自动删除，所以这里常常是空的）。" : "一次性任务都做完啦，做完的会自动删除。",
+      // 未完成里逾期的排前面：创建越早越靠前，先清旧账
+      function(a, b){ return String(a.createdKey || "") < String(b.createdKey || "") ? -1 : 1; }, false);
+    fillList(intervalListEl, intervalHabits(),
+      "暂时没有间隔任务。选「间隔重复」添加，比如每 3 天刮一次胡子。",
+      taskFilter === "done" ? "还没有已完成的间隔任务，到期做完就会出现在这里。" : "间隔任务都做完了，下次到期才会再有要做的。",
+      // 未完成里逾期和今天该做的排前面，其余按下次到期先后排
+      function(a, b){ return intervalStatus(a).daysUntil - intervalStatus(b).daysUntil; }, false);
   }
 
   function renderStats(){
@@ -3045,7 +3304,7 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "snack-feed-btn";
-      btn.textContent = isPetAway() ? "不在家" : "喂它";
+      btn.textContent = isPetAway() ? "游历中 · 成长中" : "喂它";
       btn.disabled = n < 1 || isPetAway();
       btn.setAttribute("aria-label", "喂一个" + st.name);
       btn.addEventListener("click", function(){ feedPet(st.key); });
@@ -3065,13 +3324,18 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     var lv = petLevel();
     var away = isPetAway();
     if (away){
-      if (vis.getAttribute("data-away") !== "1"){
-        vis.innerHTML = awaySVG();
+      // 游历中不再是空房子：小蛋本人出现在路上，边走边打怪（实况在舞台里播）
+      if (vis.getAttribute("data-away") !== "1" || idx !== lastPetStage){
+        vis.innerHTML = petSVG(idx);
+        vis.setAttribute("data-stage", String(idx));
         vis.setAttribute("data-away", "1");
+        lastPetStage = idx;
       }
       var foodEl = $("petFood");
       if (foodEl) foodEl.hidden = true;
+      startJourneyScene();
     } else {
+      stopJourneyScene();
       if (vis.getAttribute("data-away") === "1"){
         vis.removeAttribute("data-away");
         lastPetStage = -1;
@@ -3083,7 +3347,7 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       }
     }
     $("petName").textContent = "小蛋";
-    $("petStageTag").textContent = away ? "游历中 · 不在家" : st.label;
+    $("petStageTag").textContent = away ? "游历中 · 成长中" : st.label;
     $("petLevel").textContent = "Lv." + lv;
     var inLevel = state.pet.exp % EXP_PER_LEVEL;
     $("petExpText").textContent = state.pet.exp;
@@ -3091,7 +3355,7 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     $("petExpFill").style.width = Math.round(inLevel / EXP_PER_LEVEL * 100) + "%";
     var snacks = state.pet.snacks;
     if (petEating) $("petSpeech").textContent = petEatMsg || "小蛋正在一口一口慢慢吃，别急，等它吃完。";
-    else if (away) $("petSpeech").textContent = "（小蛋背着小包出去游历啦，家里空空的。它回来时会带惊喜，记得把任务做完等它检查！）";
+    else if (away) $("petSpeech").textContent = "（小蛋正在路上游历：往前走就会刷出小怪物，它会自己放技能把它们打败。看舞台里的实况就行，它回来时还会带惊喜！）";
     else if (state.pet.snackBox.drumstick > 0) $("petSpeech").textContent = "有黄金鸡腿！那是困难任务才有的好东西，一个就 +30 经验，快喂我！";
     else if (snacks >= 3) $("petSpeech").textContent = "哇，有 " + snacks + " 个零食！快喂我，我感觉马上就要变强了。";
     else if (snacks > 0) $("petSpeech").textContent = "有零食啦！点下面某个零食的「喂它」，可以连着喂，我会排队慢慢吃；点我还能跟我玩喷火和飞天转圈。";
@@ -3138,6 +3402,7 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     renderParcels();
     renderRewardStrip();
     renderJourney();
+    renderShop();
     evaluateAchievements(true);
     renderAchievements();
     renderDanmakuUI();
@@ -3765,28 +4030,28 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     var mult = [1, 1.5, 2][tier];
     function ex(n){ return Math.round(n * mult); }
     var pool = [
-      { id: "battle", w: 3, min: 0, text: "在像素森林里打赢了史莱姆，凯旋而归！", run: function(){
+      { id: "battle", coins: 12, w: 3, min: 0, text: "在像素森林里打赢了史莱姆，凯旋而归！", run: function(){
           state.pet.battleWins += 1; addSnack("drumstick", 1); var e = ex(25); state.pet.exp += e;
           return "战斗胜利 · 经验 +" + e + " · 黄金鸡腿 +1"; } },
-      { id: "help", w: 3, min: 0, text: "帮小松鼠赶跑了捣乱的乌鸦，松鼠们排队道谢", run: function(){
+      { id: "help", coins: 6, w: 3, min: 0, text: "帮小松鼠赶跑了捣乱的乌鸦，松鼠们排队道谢", run: function(){
           var e = ex(15); state.pet.exp += e; return "经验 +" + e; } },
-      { id: "snackfind", w: 3, min: 0, text: "在河边的草丛里翻到了零食，眼睛都亮了", run: function(){
+      { id: "snackfind", coins: 4, w: 3, min: 0, text: "在河边的草丛里翻到了零食，眼睛都亮了", run: function(){
           var r = Math.random();
           if (r < 0.4){ addSnack("biscuit", 2); return "星星饼干 +2"; }
           if (r < 0.75){ addSnack("meat", 1); return "烤肉串 +1"; }
           addSnack("biscuit", 1); addSnack("meat", 1); return "星星饼干 +1 · 烤肉串 +1"; } },
-      { id: "rainbow", w: 2, min: 0, text: "遇到了彩虹喷泉，洗了个闪闪发光的澡", run: function(){
+      { id: "rainbow", coins: 5, w: 2, min: 0, text: "遇到了彩虹喷泉，洗了个闪闪发光的澡", run: function(){
           var e = ex(20); state.pet.exp += e; return "经验 +" + e; } },
-      { id: "nap", w: 2, min: 0, text: "在云朵上睡了个午觉，回来精神满满", run: function(){
+      { id: "nap", coins: 3, w: 2, min: 0, text: "在云朵上睡了个午觉，回来精神满满", run: function(){
           var e = ex(10); state.pet.exp += e; return "经验 +" + e; } },
-      { id: "souvenir", w: 2, min: 0, text: "在一个山洞里发现了宝贝，小心翼翼背了回来", run: function(){
+      { id: "souvenir", coins: 10, w: 2, min: 0, text: "在一个山洞里发现了宝贝，小心翼翼背了回来", run: function(){
           var sv = SOUVENIRS[Math.floor(Math.random() * SOUVENIRS.length)];
           addSouvenir(sv.key); state.pet.rareFinds += 1; var e = ex(5); state.pet.exp += e;
           return "纪念品「" + sv.name + "」+1 · 经验 +" + e; } },
-      { id: "fruit", w: 1, min: 1, text: "找到一棵野生的龙焰果树，摘了果子带回来", run: function(){
+      { id: "fruit", coins: 8, w: 1, min: 1, text: "找到一棵野生的龙焰果树，摘了果子带回来", run: function(){
           addSnack("fruit", 1); state.pet.rareFinds += 1; var e = ex(5); state.pet.exp += e;
           return "稀有零食龙焰果 +1 · 经验 +" + e; } },
-      { id: "feast", w: 1, min: 2, text: "参加了森林里的零食派对，吃得饱饱的还打包了", run: function(){
+      { id: "feast", coins: 8, w: 1, min: 2, text: "参加了森林里的零食派对，吃得饱饱的还打包了", run: function(){
           addSnack("meat", 1); addSnack("drumstick", 1); var e = ex(10); state.pet.exp += e;
           return "烤肉串 +1 · 黄金鸡腿 +1 · 经验 +" + e; } }
     ];
@@ -3805,6 +4070,9 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     var before = petStageIdx();
     var ev = rollJourneyEvent(j.durationMin);
     var reward = ev.run();
+    var coinGain = (j.durationMin >= 60 ? 30 : (j.durationMin >= 30 ? 18 : 10)) + (ev.coins || 0);
+    state.pet.coins = (state.pet.coins || 0) + coinGain;
+    reward += " · 金币 +" + coinGain;
     state.pet.journeyCount += 1;
     state.pet.journal.unshift({ at: Date.now(), text: ev.text, reward: reward, dur: j.durationMin });
     state.pet.journal = state.pet.journal.slice(0, 20);
@@ -3821,6 +4089,79 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     ensurePet();
     if (state.pet.journey && Date.now() >= state.pet.journey.backAt) settleJourney();
   }
+  /* ---------- 金币 + 装扮店 ---------- */
+  function renderCoins(){
+    ensurePet();
+    var c = state.pet.coins || 0;
+    var a = $("coinCount"); if (a) a.textContent = c;
+    var b = $("shopCoinCount"); if (b) b.textContent = c;
+  }
+  function renderShop(){
+    var grid = $("shopGrid");
+    if (!grid || !state) return;
+    ensurePet();
+    renderCoins();
+    grid.innerHTML = "";
+    OUTFITS.forEach(function(o){
+      var owned = state.pet.ownedOutfits.indexOf(o.key) !== -1;
+      var worn = state.pet.outfit[o.slot] === o.key;
+      var item = document.createElement("div");
+      item.className = "shop-item";
+      var prev = document.createElement("div");
+      prev.className = "shop-prev";
+      prev.innerHTML = '<svg viewBox="' + o.pvb + '" aria-hidden="true">' + outfitItemSVG(o.key) + "</svg>";
+      prev.setAttribute("aria-hidden", "true");
+      item.appendChild(prev);
+      var nm = document.createElement("div");
+      nm.className = "shop-name";
+      nm.textContent = o.name;
+      item.appendChild(nm);
+      var meta = document.createElement("div");
+      meta.className = "shop-meta";
+      meta.textContent = o.slotName + (owned ? " · 已拥有" : " · " + o.price + " 金币");
+      item.appendChild(meta);
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "shop-btn" + (worn ? " worn" : (owned ? " equip" : ""));
+      if (worn){
+        btn.textContent = "已穿上 · 脱下";
+      } else if (owned){
+        btn.textContent = "穿上";
+      } else if ((state.pet.coins || 0) >= o.price){
+        btn.textContent = o.price + " 金币 · 购买";
+      } else {
+        btn.textContent = o.price + " 金币 · 还差 " + (o.price - (state.pet.coins || 0));
+        btn.disabled = true;
+      }
+      btn.setAttribute("aria-label", (worn ? "脱下" : (owned ? "给小蛋穿上" : "购买")) + o.name);
+      btn.addEventListener("click", function(){
+        ensurePet();
+        var isOwned = state.pet.ownedOutfits.indexOf(o.key) !== -1;
+        var isWorn = state.pet.outfit[o.slot] === o.key;
+        if (isWorn){
+          state.pet.outfit[o.slot] = "";
+          playTap();
+          toast("脱下了「" + o.name + "」");
+        } else if (isOwned){
+          state.pet.outfit[o.slot] = o.key;
+          playCheck();
+          toast("小蛋穿上了「" + o.name + "」！");
+        } else {
+          if ((state.pet.coins || 0) < o.price){ playTap(); toast("金币不够，让小蛋多出去游历赚金币吧"); return; }
+          state.pet.coins -= o.price;
+          state.pet.ownedOutfits.push(o.key);
+          state.pet.outfit[o.slot] = o.key;
+          playCheck();
+          burstDanmaku(2);
+          toast("买下「" + o.name + "」，已经给小蛋穿上了！");
+        }
+        save(); renderAll();
+      });
+      item.appendChild(btn);
+      grid.appendChild(item);
+    });
+  }
+
   function renderJourney(){
     var main = $("journeyMain");
     if (!main) return;
@@ -3833,7 +4174,7 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       var remain = Math.max(1, Math.ceil((j.backAt - Date.now()) / 60000));
       var p = document.createElement("p");
       p.className = "journey-intro";
-      p.textContent = "小蛋正在外面游历，家里空空的。它会在路上战斗、找零食、捡宝贝，回来全都会记在下面的游历记录里。";
+      p.textContent = "小蛋正在路上游历（往上看舞台实况：它边走边打怪，前面会不断刷出新怪物）。它会在路上战斗、找零食、捡宝贝，回来全都会记在下面的游历记录里。";
       main.appendChild(p);
       var meta = document.createElement("div");
       meta.className = "journey-meta";
@@ -3849,10 +4190,16 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       fill.style.width = pct + "%";
       bar.appendChild(fill);
       main.appendChild(bar);
+      var bi = document.createElement("div");
+      bi.className = "journey-meta";
+      bi.id = "journeyBattleInfo";
+      bi.style.marginTop = "9px";
+      bi.textContent = "路上实况：小蛋正在往前走，前面会不断刷新小怪物…";
+      main.appendChild(bi);
     } else {
       var p2 = document.createElement("p");
       p2.className = "journey-intro";
-      p2.textContent = "让小蛋背起小包出去游历一段时间。期间它不在家，回来时会触发随机事件：战斗胜利、捡到零食、带回纪念品……游历越久，奖励越好。";
+      p2.textContent = "让小蛋背起小包出去游历一段时间。期间它在外面游历、一路成长，回来时会触发随机事件：战斗胜利、捡到零食、带回纪念品……游历越久，奖励越好。";
       main.appendChild(p2);
       var chips = document.createElement("div");
       chips.className = "journey-chips";
@@ -3917,6 +4264,170 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
         });
       }
     }
+  }
+
+  /* ---------- 游历实况：小蛋在路上走路打怪 ----------
+     纯画面演出：小蛋在舞台左侧一路走，前面不断刷新小怪物，它自动轮流放技能，
+     打掉一只再来下一只，直到游历时间到回家。演出不改奖励，游历奖励仍走 settleJourney 结算。 */
+  var JMONSTERS = [
+    { key: "slime", name: "史莱姆", hp: 2 },
+    { key: "mush", name: "毒蘑菇", hp: 2 },
+    { key: "bat", name: "小蝙蝠", hp: 3 },
+    { key: "bone", name: "骷髅兵", hp: 3 },
+    { key: "gob", name: "哥布林", hp: 4 }
+  ];
+  function monsterSVG(key){
+    function R(x, y, w, h, c){ return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="' + c + '"/>'; }
+    var s = "";
+    if (key === "slime"){
+      s = R(14,6,20,6,"#3fae5a") + R(8,12,32,18,"#3fae5a") + R(8,12,32,6,"#63c578") + R(4,30,40,8,"#2b7f3e")
+        + R(16,20,5,7,"#10260f") + R(28,20,5,7,"#10260f") + R(17,21,2,2,"#fff") + R(29,21,2,2,"#fff") + R(21,32,7,2,"#10260f");
+    } else if (key === "mush"){
+      s = R(10,4,28,6,"#b23b2e") + R(6,10,36,10,"#d14d4d") + R(14,6,6,5,"#f2ead8") + R(28,12,6,5,"#f2ead8") + R(20,14,5,4,"#f2ead8")
+        + R(18,20,12,14,"#f2ead8") + R(18,20,12,3,"#d8cdb4")
+        + R(21,25,3,4,"#262038") + R(29,25,3,4,"#262038") + R(14,34,8,4,"#8a6f4d") + R(28,34,8,4,"#8a6f4d");
+    } else if (key === "bat"){
+      s = R(2,12,12,6,"#584b7d") + R(6,18,10,6,"#584b7d") + R(34,12,12,6,"#584b7d") + R(32,18,10,6,"#584b7d")
+        + R(18,10,12,8,"#6b5a94") + R(17,16,14,14,"#443763")
+        + R(20,13,3,3,"#eccd7d") + R(26,13,3,3,"#eccd7d") + R(21,24,2,3,"#fff") + R(26,24,2,3,"#fff");
+    } else if (key === "bone"){
+      s = R(14,4,20,6,"#e8e4da") + R(12,10,24,14,"#f2efe8") + R(18,24,12,6,"#e8e4da")
+        + R(17,14,5,6,"#262038") + R(27,14,5,6,"#262038") + R(22,20,4,3,"#262038")
+        + R(19,26,2,3,"#262038") + R(24,26,2,3,"#262038") + R(28,26,2,3,"#262038")
+        + R(16,32,16,3,"#d8d2c4") + R(16,37,16,3,"#d8d2c4") + R(22,30,4,12,"#e8e4da");
+    } else {
+      s = R(4,14,10,5,"#3fae5a") + R(34,14,10,5,"#3fae5a")
+        + R(13,6,22,10,"#4cb564") + R(12,14,24,16,"#4cb564") + R(12,14,24,4,"#63c578")
+        + R(16,19,5,6,"#eccd7d") + R(27,19,5,6,"#eccd7d") + R(17,20,2,2,"#10260f") + R(28,20,2,2,"#10260f")
+        + R(20,28,9,3,"#7e271c") + R(21,28,2,3,"#fff") + R(26,28,2,3,"#fff")
+        + R(16,30,16,8,"#8a5a2b") + R(14,38,7,4,"#5d3717") + R(28,38,7,4,"#5d3717");
+    }
+    return '<svg class="mon" viewBox="0 0 48 48" aria-hidden="true">' + s + "</svg>";
+  }
+  var JSKILLS = [
+    { name: "喷火", svg: '<svg viewBox="0 0 48 30" aria-hidden="true"><rect x="2" y="11" width="10" height="8" fill="#e4672a"/><rect x="12" y="8" width="13" height="14" fill="#e08a4e"/><rect x="25" y="10" width="11" height="10" fill="#eccd7d"/><rect x="36" y="12" width="7" height="6" fill="#fff3c4"/></svg>' },
+    { name: "冰锥术", svg: '<svg viewBox="0 0 48 30" aria-hidden="true"><rect x="2" y="13" width="9" height="4" fill="#bfe8ff"/><rect x="11" y="10" width="12" height="10" fill="#6fc3e7"/><rect x="23" y="12" width="10" height="6" fill="#bfe8ff"/><rect x="33" y="13" width="8" height="4" fill="#ffffff"/></svg>' },
+    { name: "雷电击", svg: '<svg viewBox="0 0 48 30" aria-hidden="true"><rect x="20" y="0" width="7" height="11" fill="#eccd7d"/><rect x="15" y="9" width="7" height="9" fill="#eccd7d"/><rect x="20" y="16" width="7" height="12" fill="#e8b93e"/><rect x="22" y="2" width="3" height="7" fill="#fff3c4"/></svg>' },
+    { name: "龙爪猛击", svg: '<svg viewBox="0 0 48 30" aria-hidden="true"><path d="M6 3 L26 27" stroke="#ffffff" stroke-width="5"/><path d="M16 2 L36 26" stroke="#e2e6ec" stroke-width="5"/><path d="M27 3 L44 22" stroke="#ffffff" stroke-width="5"/></svg>' },
+    { name: "烈焰尾扫", svg: '<svg viewBox="0 0 48 30" aria-hidden="true"><rect x="2" y="18" width="14" height="6" fill="#e4672a"/><rect x="14" y="13" width="14" height="8" fill="#e08a4e"/><rect x="26" y="8" width="12" height="8" fill="#eccd7d"/><rect x="36" y="4" width="7" height="7" fill="#e4672a"/></svg>' }
+  ];
+  var jScene = { timer: null, monster: null, hp: 0, maxHp: 0, phase: "walk", ticks: 0, kills: 0, lastLog: "", mode: "walk" };
+  // 小蛋是龙：游历赶路一段走、一段飞，每打完一只怪就换一种赶路方式
+  function jSetMode(m){
+    jScene.mode = m;
+    var vis = $("petVisual"), wrap = $("petStageWrap");
+    if (vis){
+      vis.classList.toggle("journey-fly", m === "fly");
+      vis.classList.toggle("journey-walk", m !== "fly");
+    }
+    if (wrap) wrap.classList.toggle("journey-flying", m === "fly");
+  }
+  function jLog(text){
+    jScene.lastLog = text;
+    var el = $("journeyLog");
+    if (el) el.textContent = text;
+    var bi = $("journeyBattleInfo");
+    if (bi) bi.textContent = "路上实况：" + text + (jScene.kills ? " · 这一路已打败 " + jScene.kills + " 只小怪物" : "");
+  }
+  function updateMonsterHp(){
+    var f = $("journeyMonsterHp");
+    if (f) f.style.width = Math.max(0, Math.round(jScene.hp / jScene.maxHp * 100)) + "%";
+    var t = $("journeyMonsterName");
+    if (t && jScene.monster) t.textContent = jScene.monster.name + " HP " + Math.max(0, jScene.hp) + "/" + jScene.maxHp;
+  }
+  function spawnJourneyMonster(){
+    var m = JMONSTERS[Math.floor(Math.random() * JMONSTERS.length)];
+    jScene.monster = m; jScene.hp = m.hp; jScene.maxHp = m.hp; jScene.phase = "approach"; jScene.ticks = 0;
+    var box = $("journeyMonster");
+    if (box){
+      box.hidden = false;
+      box.className = "jscene-monster spawn" + (jScene.mode === "fly" ? " air" : "");
+      box.style.right = "3%";
+      box.innerHTML = '<div class="jscene-mname" id="journeyMonsterName"></div><div class="jscene-mhp"><i id="journeyMonsterHp"></i></div>' + monsterSVG(m.key);
+      updateMonsterHp();
+    }
+    jLog(jScene.mode === "fly" ? ("云层里钻出一只" + m.name + "！小蛋在空中迎了上去…") : ("前面刷新了一只" + m.name + "！小蛋迎了上去…"));
+  }
+  function castJourneySkill(){
+    if (!jScene.monster) return;
+    var sk = JSKILLS[Math.floor(Math.random() * JSKILLS.length)];
+    var fx = $("journeyFx"), box = $("journeyMonster");
+    jScene.hp -= 1;
+    if (fx){
+      fx.innerHTML = sk.svg;
+      fx.hidden = false;
+      fx.classList.toggle("air", jScene.mode === "fly");
+      fx.classList.remove("on");
+      fx.style.left = "29%";
+      setTimeout(function(){ fx.classList.add("on"); fx.style.left = "63%"; }, 30);
+      setTimeout(function(){ fx.classList.remove("on"); fx.hidden = true; }, 560);
+    }
+    if (box){ box.classList.add("hit"); setTimeout(function(){ box.classList.remove("hit"); }, 330); }
+    if (jScene.hp <= 0){
+      jScene.kills += 1;
+      state.pet.coins = (state.pet.coins || 0) + 2;
+      save();
+      renderCoins();
+      jScene.phase = "dead"; jScene.ticks = 0;
+      if (box) box.classList.add("dead");
+      updateMonsterHp();
+      jLog("小蛋用「" + sk.name + "」打败了" + jScene.monster.name + "！金币 +2，继续前进！");
+      if (navigator.vibrate){ try { navigator.vibrate(12); } catch(e){} }
+    } else {
+      jLog("小蛋用「" + sk.name + "」打中" + jScene.monster.name + "！");
+      updateMonsterHp();
+    }
+  }
+  function jSceneTick(){
+    if (!isPetAway()){ stopJourneyScene(); return; }
+    if (document.hidden) return;
+    var bp = $("boardPet");
+    if (bp && bp.hidden) return;
+    if (jScene.lastLog) jLog(jScene.lastLog);
+    jScene.ticks += 1;
+    if (jScene.phase === "walk"){
+      if (jScene.ticks >= 2) spawnJourneyMonster();
+    } else if (jScene.phase === "approach"){
+      var box = $("journeyMonster");
+      if (box) box.style.right = (3 + jScene.ticks * 10) + "%";
+      if (jScene.ticks >= 2){ jScene.phase = "fight"; jScene.ticks = 0; }
+    } else if (jScene.phase === "fight"){
+      if (jScene.ticks % 2 === 1) castJourneySkill();
+    } else if (jScene.phase === "dead"){
+      if (jScene.ticks >= 2){
+        var box2 = $("journeyMonster");
+        if (box2){ box2.hidden = true; box2.className = "jscene-monster"; }
+        jScene.monster = null;
+        jScene.phase = "walk"; jScene.ticks = 0;
+        jSetMode(jScene.mode === "fly" ? "walk" : "fly");
+        jLog(jScene.mode === "fly" ? "小蛋扇起翅膀飞上蓝天，继续赶路找下一个对手…" : "小蛋落回地面，迈开小脚继续往前走…");
+      }
+    }
+  }
+  function startJourneyScene(){
+    var wrap = $("petStageWrap"), scene = $("journeyScene"), vis = $("petVisual");
+    if (!wrap || !scene) return;
+    wrap.classList.add("journey-mode");
+    scene.hidden = false;
+    jScene.mode = "walk";
+    if (vis){ vis.classList.remove("journey-fly"); vis.classList.add("journey-walk"); }
+    if (jScene.timer) return;
+    jScene.phase = "walk"; jScene.ticks = 0;
+    jLog("小蛋背着小包出发啦，在路上边走边打怪！");
+    jScene.timer = setInterval(jSceneTick, 620);
+  }
+  function stopJourneyScene(){
+    if (jScene.timer){ clearInterval(jScene.timer); jScene.timer = null; }
+    var wrap = $("petStageWrap"), scene = $("journeyScene"), vis = $("petVisual");
+    if (wrap){ wrap.classList.remove("journey-mode"); wrap.classList.remove("journey-flying"); }
+    if (scene) scene.hidden = true;
+    if (vis) vis.classList.remove("journey-walk", "journey-fly");
+    jScene.mode = "walk";
+    var box = $("journeyMonster");
+    if (box){ box.hidden = true; box.className = "jscene-monster"; }
+    var fx = $("journeyFx");
+    if (fx){ fx.hidden = true; fx.classList.remove("on"); }
+    jScene.monster = null; jScene.kills = 0; jScene.phase = "walk"; jScene.ticks = 0; jScene.lastLog = "";
   }
 
   /* ---------- 鼓励弹幕 ---------- */
@@ -4115,25 +4626,59 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
   }
 
   /* ---------- 成就系统：自律成就 + 小蛋成就，各有专属像素徽章 ---------- */
+  function ACH(key, cat, name, desc, badge, metric, need){
+    return { key: key, cat: cat, name: name, desc: desc, badge: badge, metric: metric, need: need };
+  }
   var ACHIEVEMENTS = [
-    { key: "first_check", cat: "user", name: "第一次打卡", desc: "完成第 1 次打卡", badge: "check" },
-    { key: "streak_7", cat: "user", name: "坚持一周", desc: "连续打卡 7 天", badge: "flame" },
-    { key: "streak_30", cat: "user", name: "自律一月", desc: "连续打卡 30 天", badge: "crown" },
-    { key: "all_daily", cat: "user", name: "全清达人", desc: "一天内完成全部每日习惯", badge: "sun" },
-    { key: "pin_first", cat: "user", name: "重点先行", desc: "第一次把任务置顶", badge: "pin" },
-    { key: "hard_first", cat: "user", name: "专啃硬骨头", desc: "完成第 1 个困难（★★★）任务", badge: "sword" },
-    { key: "check_50", cat: "user", name: "积少成多", desc: "累计打卡 50 次", badge: "medal" },
-    { key: "focus_60", cat: "user", name: "专注一小时", desc: "累计专注 60 分钟", badge: "hourglass" },
-    { key: "evolve_first", cat: "pet", name: "第一次进化", desc: "小蛋进化成青年龙", badge: "egg" },
-    { key: "evolve_king", cat: "pet", name: "龙王降临", desc: "小蛋进化成龙王", badge: "king" },
-    { key: "journey_first", cat: "pet", name: "第一次游历", desc: "小蛋完成第 1 次游历", badge: "boot" },
-    { key: "journey_5", cat: "pet", name: "小小旅行家", desc: "小蛋累计游历 5 次", badge: "map" },
-    { key: "battle_first", cat: "pet", name: "初战告捷", desc: "小蛋游历战斗胜利 1 次", badge: "shield" },
-    { key: "battle_5", cat: "pet", name: "森林勇士", desc: "小蛋游历战斗胜利 5 次", badge: "sword2" },
-    { key: "rare_find", cat: "pet", name: "寻宝猎人", desc: "小蛋带回稀有物品（龙焰果 / 纪念品）", badge: "gem" },
-    { key: "taste_all", cat: "pet", name: "美食家小蛋", desc: "小蛋吃过全部 4 种零食", badge: "star" },
-    { key: "feed_20", cat: "pet", name: "干饭龙", desc: "累计喂小蛋 20 次", badge: "drum" }
+    ACH("first_check", "user", "第一次打卡", "完成第 1 次打卡", "check", "checks", 1),
+    ACH("streak_7", "user", "坚持一周", "连续打卡 7 天", "flame", "streak", 7),
+    ACH("streak_30", "user", "自律一月", "连续打卡 30 天", "crown", "streak", 30),
+    ACH("all_daily", "user", "全清达人", "一天内完成全部每日习惯", "sun", "allDoneDays", 1),
+    ACH("pin_first", "user", "重点先行", "第一次把任务置顶", "pin", "pin", 1),
+    ACH("hard_first", "user", "专啃硬骨头", "完成第 1 个困难（★★★）任务", "sword", "hard", 1),
+    ACH("check_50", "user", "积少成多", "累计打卡 50 次", "medal", "checks", 50),
+    ACH("focus_60", "user", "专注一小时", "累计专注 60 分钟", "hourglass", "focus", 60),
+    ACH("evolve_first", "pet", "第一次进化", "小蛋进化成青年龙", "egg", "stage", 1),
+    ACH("evolve_war", "pet", "战龙觉醒", "小蛋进化成战龙", "sword2", "stage", 2),
+    ACH("evolve_king", "pet", "龙王降临", "小蛋进化成龙王", "king", "stage", 3),
+    ACH("journey_first", "pet", "第一次游历", "小蛋完成第 1 次游历", "boot", "journeys", 1),
+    ACH("journey_5", "pet", "小小旅行家", "小蛋累计游历 5 次", "map", "journeys", 5),
+    ACH("battle_first", "pet", "初战告捷", "小蛋游历战斗胜利 1 次", "shield", "battles", 1),
+    ACH("battle_5", "pet", "森林勇士", "小蛋游历战斗胜利 5 次", "sword2", "battles", 5),
+    ACH("rare_find", "pet", "寻宝猎人", "小蛋带回稀有物品（龙焰果 / 纪念品）", "gem", "rare", 1),
+    ACH("taste_all", "pet", "美食家小蛋", "小蛋吃过全部 4 种零食", "star", "tasted", 4),
+    ACH("feed_20", "pet", "干饭龙", "累计喂小蛋 20 次", "drum", "fed", 20)
   ];
+  /* 阶梯成就：一排排小目标，达到真实记录的门槛就点亮，凑够 200 多个慢慢收集 */
+  var ACH_LADDERS = [
+    { cat: "user", metric: "checks", keyP: "check_", badge: "medal", label: "累计打卡", unit: "次", needs: [5, 10, 20, 30, 75, 100, 150, 200, 300, 500, 1000] },
+    { cat: "user", metric: "streak", keyP: "streak_", badge: "flame", label: "连续打卡", unit: "天", needs: [3, 5, 14, 21, 45, 50, 60, 75, 90, 100, 150, 200, 365] },
+    { cat: "user", metric: "focus", keyP: "focus_", badge: "hourglass", label: "累计专注", unit: "分钟", needs: [25, 100, 150, 200, 300, 500, 600, 750, 1000, 1500, 2000, 2500, 3000, 5000, 10000] },
+    { cat: "user", metric: "focusDays", keyP: "focusdays_", badge: "hourglass", label: "专注过的日子", unit: "天", needs: [1, 3, 7, 14, 21, 30, 45, 60, 100, 200] },
+    { cat: "user", metric: "checkDays", keyP: "checkdays_", badge: "sun", label: "有打卡的日子", unit: "天", needs: [3, 7, 14, 21, 30, 50, 60, 100, 200, 250, 365] },
+    { cat: "user", metric: "allDoneDays", keyP: "alldone_", badge: "crown", label: "全部完成的日子", unit: "天", needs: [3, 7, 14, 21, 30, 50, 75, 100] },
+    { cat: "user", metric: "noteDays", keyP: "note_", badge: "star", label: "写下今日一句话", unit: "天", needs: [1, 3, 7, 14, 21, 30, 60, 100, 200] },
+    { cat: "user", metric: "leaveDays", keyP: "leave_", badge: "shield", label: "用过请假卡", unit: "次", needs: [1, 2, 4, 8, 12] },
+    { cat: "user", metric: "habits", keyP: "habits_", badge: "pin", label: "同时在管的任务", unit: "个", needs: [5, 6, 8, 10, 12, 15] },
+    { cat: "user", metric: "parcels", keyP: "parcel_", badge: "map", label: "记录过的快递", unit: "件", needs: [1, 3, 5, 10, 20, 30, 50, 100] },
+    { cat: "user", metric: "picked", keyP: "picked_", badge: "check", label: "取走的快递", unit: "件", needs: [1, 3, 5, 10, 20, 30, 50, 100] },
+    { cat: "user", metric: "quotes", keyP: "quotes_", badge: "star", label: "鼓励弹幕词库", unit: "句", needs: [4, 5, 8, 10, 15, 20] },
+    { cat: "pet", metric: "level", keyP: "level_", badge: "crown", label: "小蛋等级", unit: "级", needs: [2, 3, 5, 8, 10, 15, 20, 25, 30, 50, 60, 65, 80] },
+    { cat: "pet", metric: "exp", keyP: "exp_", badge: "gem", label: "小蛋累计经验", unit: "点", needs: [100, 250, 500, 750, 1000, 1500, 2000, 3000, 5000] },
+    { cat: "pet", metric: "fed", keyP: "fed_", badge: "drum", label: "累计喂小蛋", unit: "次", needs: [1, 5, 10, 30, 50, 75, 100, 150, 200, 300, 400, 500] },
+    { cat: "pet", metric: "journeys", keyP: "journey_", badge: "boot", label: "小蛋累计游历", unit: "次", needs: [3, 10, 15, 20, 30, 40, 50, 75, 100] },
+    { cat: "pet", metric: "battles", keyP: "battle_", badge: "sword2", label: "游历战斗胜利", unit: "次", needs: [3, 10, 20, 30, 50, 75, 100, 150, 200] },
+    { cat: "pet", metric: "rare", keyP: "rare_", badge: "gem", label: "带回稀有物品", unit: "次", needs: [3, 5, 10, 20, 30, 50, 100] },
+    { cat: "pet", metric: "souvKinds", keyP: "souvk_", badge: "gem", label: "收集的纪念品种类", unit: "种", needs: [1, 2, 3, 5, 6] },
+    { cat: "pet", metric: "souvTotal", keyP: "souvt_", badge: "gem", label: "带回的纪念品总数", unit: "件", needs: [3, 5, 10, 20, 30, 50] },
+    { cat: "pet", metric: "journal", keyP: "journal_", badge: "map", label: "游历记录", unit: "条", needs: [3, 5, 10, 20] },
+    { cat: "pet", metric: "snacks", keyP: "snacks_", badge: "drum", label: "零食库存囤到", unit: "个", needs: [5, 10, 20, 30, 50] }
+  ];
+  ACH_LADDERS.forEach(function(L){
+    L.needs.forEach(function(n){
+      ACHIEVEMENTS.push(ACH(L.keyP + n, L.cat, L.label + " " + n + (L.unit ? " " + L.unit : ""), L.label + "达到 " + n + (L.unit ? " " + L.unit : ""), L.badge, L.metric, n));
+    });
+  });
   function badgeSVG(key){
     function R(x, y, w, h, c){ return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="' + c + '"/>'; }
     var s = "";
@@ -4178,30 +4723,64 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     }
     return false;
   }
-  function achMet(a){
-    ensurePet();
-    var best = state.bestStreak || 0;
-    try { best = Math.max(best, calcStreak()); } catch(e){}
-    switch (a.key){
-      case "first_check": return countTotalChecks() >= 1;
-      case "streak_7": return best >= 7;
-      case "streak_30": return best >= 30;
-      case "all_daily": return anyDayAllDone();
-      case "pin_first": return !!ensureFlags().pinEver;
-      case "hard_first": return !!ensureFlags().hardEver;
-      case "check_50": return countTotalChecks() >= 50;
-      case "focus_60": return (state.totalFocus || 0) >= 60;
-      case "evolve_first": return petStageIdx() >= 1;
-      case "evolve_king": return petStageIdx() >= 3;
-      case "journey_first": return state.pet.journeyCount >= 1;
-      case "journey_5": return state.pet.journeyCount >= 5;
-      case "battle_first": return state.pet.battleWins >= 1;
-      case "battle_5": return state.pet.battleWins >= 5;
-      case "rare_find": return state.pet.rareFinds >= 1;
-      case "taste_all": return SNACK_TYPES.every(function(s){ return state.pet.tasted[s.key]; });
-      case "feed_20": return state.pet.totalFed >= 20;
+  function dayCheckTotal(rec){
+    if (!rec) return 0;
+    var total = 0, counted = {};
+    if (rec.counts){
+      Object.keys(rec.counts).forEach(function(id){
+        if (typeof rec.counts[id] === "number" && rec.counts[id] > 0){ total += rec.counts[id]; counted[id] = true; }
+      });
     }
-    return false;
+    if (Array.isArray(rec.done)) rec.done.forEach(function(id){ if (!counted[id]) total += 1; });
+    return total;
+  }
+  function countDaysWhere(fn){
+    var n = 0;
+    Object.keys(state.days || {}).forEach(function(k){
+      var rec = state.days[k];
+      if (rec && fn(rec, k)) n++;
+    });
+    return n;
+  }
+  function achMetric(m){
+    ensurePet();
+    switch (m){
+      case "checks": return countTotalChecks();
+      case "streak":
+        var b = state.bestStreak || 0;
+        try { b = Math.max(b, calcStreak()); } catch(e){}
+        return b;
+      case "focus": return state.totalFocus || 0;
+      case "focusDays": return countDaysWhere(function(rec){ return (rec.focus || 0) > 0; });
+      case "checkDays": return countDaysWhere(function(rec){ return dayCheckTotal(rec) > 0; });
+      case "allDoneDays": return countDaysWhere(function(rec, k){ try { return dayAllDone(k); } catch(e){ return false; } });
+      case "noteDays": return countDaysWhere(function(rec){ return !!(rec.note && rec.note.trim()); });
+      case "leaveDays": return countDaysWhere(function(rec){ return !!rec.leave; });
+      case "habits": return (state.habits || []).length;
+      case "parcels": return (state.parcels || []).length;
+      case "picked": return (state.parcels || []).filter(function(p){ return p.picked; }).length;
+      case "quotes": return (state.quotes || []).length;
+      case "level": return petLevel();
+      case "stage": return petStageIdx();
+      case "exp": return state.pet.exp || 0;
+      case "fed": return state.pet.totalFed || 0;
+      case "journeys": return state.pet.journeyCount || 0;
+      case "battles": return state.pet.battleWins || 0;
+      case "rare": return state.pet.rareFinds || 0;
+      case "tasted": return SNACK_TYPES.filter(function(s){ return state.pet.tasted[s.key]; }).length;
+      case "souvKinds": return (state.pet.souvenirs || []).length;
+      case "souvTotal": return (state.pet.souvenirs || []).reduce(function(sum, s){ return sum + (s.n || 1); }, 0);
+      case "journal": return (state.pet.journal || []).length;
+      case "snacks":
+        var box = state.pet.snackBox || {};
+        return SNACK_TYPES.reduce(function(sum, s){ return sum + (box[s.key] || 0); }, 0);
+      case "pin": return ensureFlags().pinEver ? 1 : 0;
+      case "hard": return ensureFlags().hardEver ? 1 : 0;
+    }
+    return 0;
+  }
+  function achMet(a){
+    return achMetric(a.metric) >= a.need;
   }
   function evaluateAchievements(announce){
     if (!state) return;
@@ -4374,13 +4953,22 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     // 切换后回到顶部，不用接着上一板块的位置往下滑
     try { window.scrollTo(0, 0); } catch(e){}
   }
+  document.querySelectorAll(".task-filter-btn").forEach(function(b){
+    b.addEventListener("click", function(){
+      var f = b.getAttribute("data-filter") || "all";
+      if (taskFilter === f) return;
+      taskFilter = f;
+      playTap();
+      renderHabits();
+    });
+  });
   $("tabTasks").addEventListener("click", function(){ if (currentBoard !== "tasks"){ playTap(); showBoard("tasks"); } });
   $("tabPet").addEventListener("click", function(){ if (currentBoard !== "pet"){ playTap(); showBoard("pet"); } });
   $("tabParcel").addEventListener("click", function(){ if (currentBoard !== "parcel"){ playTap(); showBoard("parcel"); } });
 
   $("feedAllBtn").addEventListener("click", function(){ feedAllSnacks(); });
   function onPetTap(){
-    if (isPetAway()){ playTap(); toast("小蛋出去游历了，还没回来呢"); return; }
+    if (isPetAway()){ playTap(); toast("小蛋正在路上打怪游历，回来再跟它玩"); return; }
     if (petEating){ playTap(); toast("小蛋还在慢慢吃，等它吃完再玩"); return; }
     if (petPlaying) return;
     togglePlayChooser();
@@ -4438,7 +5026,7 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       state.soundOn = keepSound;
       state.habits = [];
       stopTimer(false);
-      setDuration(selectedMin);
+      setDurationSec(selectedSec);
       save(); renderAll();
       toast("已清空，从今天重新开始");
     });
@@ -4446,6 +5034,7 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
 
   /* ---------- 专注计时 ---------- */
   var selectedMin = 25;
+  var selectedSec = 25 * 60;   // 当前时长（秒）：固定档位和自定义都统一成秒，几分几秒都可以
   var timerId = null;
   var endAt = 0;        // 结束时间戳（运行中）
   var remainMs = 25 * 60 * 1000;  // 暂停时剩余
@@ -4455,19 +5044,35 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     var s = Math.max(0, Math.ceil(ms / 1000));
     return pad(Math.floor(s / 60)) + ":" + pad(s % 60);
   }
+  function fmtDur(sec){
+    sec = Math.round(sec);
+    if (sec % 60 === 0) return (sec / 60) + " 分钟";
+    if (sec < 60) return sec + " 秒";
+    return Math.floor(sec / 60) + " 分 " + (sec % 60) + " 秒";
+  }
+  function hideCheer(){
+    var c = $("timerCheer");
+    if (c){ c.hidden = true; c.textContent = ""; }
+  }
 
-  function setDuration(min){
-    selectedMin = min;
-    remainMs = min * 60 * 1000;
+  function setDurationSec(sec){
+    sec = Math.max(1, Math.round(sec));
+    selectedSec = sec;
+    selectedMin = sec / 60;
+    remainMs = sec * 1000;
     running = false;
     if (timerId){ clearInterval(timerId); timerId = null; }
     var chips = $("chips").querySelectorAll(".chip");
     chips.forEach(function(c){
-      c.classList.toggle("on", Number(c.getAttribute("data-min")) === min);
+      c.classList.toggle("on", Number(c.getAttribute("data-min")) * 60 === sec);
     });
+    hideCheer();
     $("timerDisplay").textContent = fmt(remainMs);
     $("timerState").textContent = "选一个时长，开始专注";
     $("startPauseBtn").textContent = "开始专注";
+  }
+  function setDuration(min){
+    setDurationSec(min * 60);
   }
 
   $("chips").addEventListener("click", function(ev){
@@ -4475,6 +5080,25 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     if (!btn) return;
     playTap();
     setDuration(Number(btn.getAttribute("data-min")));
+  });
+
+  // 自定义时长：分钟和秒可以随便填，比如 1 分 30 秒、只要 45 秒、或者 90 分钟
+  function applyCustomTime(){
+    var m = parseInt($("ctMin").value, 10);
+    var s = parseInt($("ctSec").value, 10);
+    if (isNaN(m) || m < 0) m = 0;
+    if (isNaN(s) || s < 0) s = 0;
+    var total = m * 60 + s;
+    if (total <= 0){ playTap(); toast("先填一个时长：几分钟、几秒都行"); return; }
+    if (total > 24 * 3600){ total = 24 * 3600; toast("最长先按 24 小时算啦"); }
+    playTap();
+    setDurationSec(total);
+    $("timerState").textContent = "已设为 " + fmtDur(total) + "，点「开始专注」出发";
+  }
+  $("ctApply").addEventListener("click", applyCustomTime);
+  [$("ctMin"), $("ctSec")].forEach(function(inp){
+    if (!inp) return;
+    inp.addEventListener("keydown", function(ev){ if (ev.key === "Enter"){ ev.preventDefault(); applyCustomTime(); } });
   });
 
   var audioCtx = null;
@@ -4617,20 +5241,42 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     chipTone(0.33, 1319, 0.34, 0.065);
   }
 
+  var FOCUS_CHEERS = [
+    "你做到了！这一段专注是实打实为自己赢回来的，超棒！",
+    "看吧，你比自己想的更能坚持。就这个势头，继续冲！",
+    "刚刚这一段你一分钟都没浪费，今天的你特别稳。",
+    "专注完成！说到做到的人最酷，这一下又往目标靠近了一步。",
+    "别小看这一段，厉害的人就是这样一段一段攒出来的。",
+    "你刚刚扛住了想摸手机的念头，这就是自律在长个子。",
+    "完成啦！先夸自己一句：今天的努力，一点都不会白费。",
+    "这一段专注给你记上了。休息一下，你值得，下一段照样能行！"
+  ];
+  function pickFocusCheer(){
+    // 优先用自己写过的鼓励话（弹幕词库），混着内置的随机抽一句，每次结束都不重样
+    var pool = FOCUS_CHEERS.slice();
+    if (state && Array.isArray(state.quotes)) state.quotes.forEach(function(q){ if (q && q.trim()) pool.push(q.trim()); });
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
   function finishTimer(){
     if (timerId){ clearInterval(timerId); timerId = null; }
     running = false;
     var rec = dayRec(todayKey());
-    rec.focus += selectedMin;
-    state.totalFocus += selectedMin;
+    rec.focus += selectedSec / 60;
+    state.totalFocus += selectedSec / 60;
     save(); renderAll();
     beep();
     if (navigator.vibrate) { try { navigator.vibrate([80, 60, 80]); } catch(e){} }
     $("timerDisplay").textContent = "00:00";
     $("timerState").textContent = "完成了！这段专注已经记到今天。";
+    var cheer = $("timerCheer");
+    if (cheer){
+      cheer.textContent = pickFocusCheer();
+      cheer.hidden = false;
+    }
+    burstDanmaku(2);
     $("startPauseBtn").textContent = "再来一段";
-    remainMs = selectedMin * 60 * 1000;
-    toast("专注完成 +" + selectedMin + " 分钟");
+    remainMs = selectedSec * 1000;
+    toast("专注完成 +" + fmtDur(selectedSec));
   }
 
   function tick(){
@@ -4643,7 +5289,8 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
     if (timerId){ clearInterval(timerId); timerId = null; }
     running = false;
     if (resetDisplay){
-      remainMs = selectedMin * 60 * 1000;
+      remainMs = selectedSec * 1000;
+      hideCheer();
       $("timerDisplay").textContent = fmt(remainMs);
       $("timerState").textContent = "选一个时长，开始专注";
       $("startPauseBtn").textContent = "开始专注";
@@ -4662,7 +5309,8 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       return;
     }
     // 开始 / 继续（remainMs 已用完时重新开始一段）
-    if (remainMs <= 0) remainMs = selectedMin * 60 * 1000;
+    if (remainMs <= 0) remainMs = selectedSec * 1000;
+    hideCheer();
     endAt = Date.now() + remainMs;
     running = true;
     timerId = setInterval(tick, 250);
@@ -5231,41 +5879,8 @@ html.is-promax.standalone .board-tabs{ padding-bottom:max(var(--sab), 20px); }
       navigator.serviceWorker.register("data:application/javascript;base64,Lyog6Ieq5b6L5bCP572R6aG1IOKAlCDnprvnur/nvJPlrZggKGlPUyAyNyAvIFNhZmFyaSBXZWIgQXBwKQogICDnm67moIfvvJrnrKzkuIDmrKHlnKggU2FmYXJpIOmHjOiBlOe9keaJk+W8gOaIkOWKn+WQju+8jOaKiumhtemdouacrOS9kyArIOWbvuaghyArIOa4heWNleWtmOi/myBDYWNoZSBTdG9yYWdl77ybCiAgIOS5i+WQjuaWree9kSAvIOmjnuihjOaooeW8jyAvIOaXoOS/oeWPt+aXtu+8jOS4u+Wxj+W5leaJk+W8gOS8mOWFiOS7jue8k+WtmOWHuumhtemdou+8jOaJk+WNoeaVsOaNruacrOadpeWwseWPquWtmOacrOacuiBsb2NhbFN0b3JhZ2XvvIzkuI3pnIDopoHnvZHnu5zjgIIKICAg6K+05piO77ya5pys5paH5Lu25L2N5LqOIGFzc2V0cy8g5LiL77yM5rWP6KeI5Zmo6buY6K6k5L2c55So5Z+f5Li6IGFzc2V0cy/vvJvpobXpnaLkvJrlkIzml7bmiormoLjlv4Pmlofku7blhpnlhaXlkIzkuIDkuKrnvJPlrZjvvIwKICAg5Y2z5L2/5Liq5Yir57O757uf5Y+q6K6p5pys6ISa5pys566h5YiwIGFzc2V0cy/vvIznvJPlrZjph4znmoTmlbDmja7kuZ/kuI3kvJrkuKLjgILoi6Xpg6jnvbLnjq/looPmlL7lrr3kuoYgU2VydmljZS1Xb3JrZXItQWxsb3dlZO+8jOacrOiEmuacrOWPr+ebtOaOpeaOpeeuoeWvvOiIquivt+axguOAgiAqLwp2YXIgQ0FDSEUgPSAiemlsdi1vZmZsaW5lLXYyNy0xIjsKdmFyIENPUkUgPSBbCiAgIi4uL2luZGV4Lmh0bWwiLAogICIuLi8iLAogICIuL21hbmlmZXN0LndlYm1hbmlmZXN0IiwKICAiLi9jb2luLTMyLnBuZyIsCiAgIi4vY29pbi0xODAucG5nIiwKICAiLi9jb2luLTE5Mi5wbmciLAogICIuL2NvaW4tNTEyLnBuZyIsCiAgIi4vc3cuanMiCl07CnNlbGYuYWRkRXZlbnRMaXN0ZW5lcigiaW5zdGFsbCIsIGZ1bmN0aW9uIChldmVudCkgewogIGV2ZW50LndhaXRVbnRpbCgKICAgIGNhY2hlcy5vcGVuKENBQ0hFKS50aGVuKGZ1bmN0aW9uIChjYWNoZSkgewogICAgICAvLyDpgJDkuKrliqDvvIzljZXkuKrlpLHotKXvvIjmr5TlpoLmn5DkuKrlm77moIfov5jmsqHnlJ/miJDvvInkuI3og73mi5blnq7mlbTku73nprvnur/nvJPlrZgKICAgICAgcmV0dXJuIFByb21pc2UuYWxsKENPUkUubWFwKGZ1bmN0aW9uICh1cmwpIHsKICAgICAgICByZXR1cm4gY2FjaGUuYWRkKHVybCkuY2F0Y2goZnVuY3Rpb24gKCkge30pOwogICAgICB9KSk7CiAgICB9KS50aGVuKGZ1bmN0aW9uICgpIHsgcmV0dXJuIHNlbGYuc2tpcFdhaXRpbmcoKTsgfSkKICApOwp9KTsKc2VsZi5hZGRFdmVudExpc3RlbmVyKCJhY3RpdmF0ZSIsIGZ1bmN0aW9uIChldmVudCkgewogIGV2ZW50LndhaXRVbnRpbCgKICAgIGNhY2hlcy5rZXlzKCkudGhlbihmdW5jdGlvbiAoa2V5cykgewogICAgICByZXR1cm4gUHJvbWlzZS5hbGwoa2V5cy5tYXAoZnVuY3Rpb24gKGspIHsKICAgICAgICBpZiAoayAhPT0gQ0FDSEUgJiYgay5pbmRleE9mKCJ6aWx2LW9mZmxpbmUtIikgPT09IDApIHJldHVybiBjYWNoZXMuZGVsZXRlKGspOwogICAgICB9KSk7CiAgICB9KS50aGVuKGZ1bmN0aW9uICgpIHsKICAgICAgaWYgKHNlbGYuY2xpZW50cyAmJiBzZWxmLmNsaWVudHMuY2xhaW0pIHJldHVybiBzZWxmLmNsaWVudHMuY2xhaW0oKTsKICAgIH0pCiAgKTsKfSk7CnNlbGYuYWRkRXZlbnRMaXN0ZW5lcigiZmV0Y2giLCBmdW5jdGlvbiAoZXZlbnQpIHsKICB2YXIgcmVxID0gZXZlbnQucmVxdWVzdDsKICBpZiAoIXJlcSB8fCByZXEubWV0aG9kICE9PSAiR0VUIikgcmV0dXJuOwogIHZhciB1cmw7CiAgdHJ5IHsgdXJsID0gbmV3IFVSTChyZXEudXJsKTsgfSBjYXRjaCAoZSkgeyByZXR1cm47IH0KICBpZiAodXJsLm9yaWdpbiAhPT0gc2VsZi5sb2NhdGlvbi5vcmlnaW4pIHJldHVybjsgLy8g5aSW6YOo6K+35rGC5LiA5b6L5LiN56Kw77yI5pys6aG15pys5p2l5bCx5rKh5pyJ5aSW6YOo6K+35rGC77yJCiAgLy8g5a+86Iiq6K+35rGC77ya572R57uc5LyY5YWI5ou/5paw54mI77yM5aSx6LSl56uL5Yi75Zue57yT5a2Y6YeM55qE6aG16Z2iIOKAlOKAlCDov5nmmK/mlq3nvZHkuI3nmb3lsY/nmoTlhbPplK4KICBpZiAocmVxLm1vZGUgPT09ICJuYXZpZ2F0ZSIpIHsKICAgIGV2ZW50LnJlc3BvbmRXaXRoKAogICAgICBmZXRjaChyZXEpLnRoZW4oZnVuY3Rpb24gKHJlcykgewogICAgICAgIHZhciBjb3B5ID0gcmVzLmNsb25lKCk7CiAgICAgICAgY2FjaGVzLm9wZW4oQ0FDSEUpLnRoZW4oZnVuY3Rpb24gKGMpIHsgYy5wdXQoIi4uL2luZGV4Lmh0bWwiLCBjb3B5KTsgfSkuY2F0Y2goZnVuY3Rpb24gKCkge30pOwogICAgICAgIHJldHVybiByZXM7CiAgICAgIH0pLmNhdGNoKGZ1bmN0aW9uICgpIHsKICAgICAgICByZXR1cm4gY2FjaGVzLm1hdGNoKCIuLi9pbmRleC5odG1sIikudGhlbihmdW5jdGlvbiAoaGl0KSB7CiAgICAgICAgICByZXR1cm4gaGl0IHx8IGNhY2hlcy5tYXRjaCgiLi4vIikgfHwgY2FjaGVzLm1hdGNoKHJlcSk7CiAgICAgICAgfSk7CiAgICAgIH0pCiAgICApOwogICAgcmV0dXJuOwogIH0KICAvLyDpnZnmgIHmlofku7bvvIjlm77moIcgLyDmuIXljZUgLyDmnKzohJrmnKzvvInvvJrnvJPlrZjkvJjlhYjvvIzlkb3kuK3lsLHkuI3lho3otbDnvZHnu5zvvJvmsqHlkb3kuK3lho3ogZTnvZHlubblm57loasKICBldmVudC5yZXNwb25kV2l0aCgKICAgIGNhY2hlcy5tYXRjaChyZXEpLnRoZW4oZnVuY3Rpb24gKGhpdCkgewogICAgICBpZiAoaGl0KSByZXR1cm4gaGl0OwogICAgICByZXR1cm4gZmV0Y2gocmVxKS50aGVuKGZ1bmN0aW9uIChyZXMpIHsKICAgICAgICBpZiAocmVzICYmIHJlcy5zdGF0dXMgPT09IDIwMCkgewogICAgICAgICAgdmFyIGNvcHkyID0gcmVzLmNsb25lKCk7CiAgICAgICAgICBjYWNoZXMub3BlbihDQUNIRSkudGhlbihmdW5jdGlvbiAoYykgeyBjLnB1dChyZXEsIGNvcHkyKTsgfSkuY2F0Y2goZnVuY3Rpb24gKCkge30pOwogICAgICAgIH0KICAgICAgICByZXR1cm4gcmVzOwogICAgICB9KTsKICAgIH0pCiAgKTsKfSk7CnNlbGYuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsIGZ1bmN0aW9uIChldmVudCkgewogIGlmIChldmVudCAmJiBldmVudC5kYXRhID09PSAiU0tJUF9XQUlUSU5HIiAmJiBzZWxmLnNraXBXYWl0aW5nKSBzZWxmLnNraXBXYWl0aW5nKCk7Cn0pOwo=").catch(function(){});
     } catch(e){}
   }
-  function renderOfflineBar(){
-    var bar = document.getElementById("offlineBar");
-    var txt = document.getElementById("offlineBarText");
-    if (!bar || !txt) return;
-    bar.hidden = false;
-    bar.classList.remove("is-offline", "is-warn");
-    if (!storageOK) {
-      bar.classList.add("is-warn");
-      txt.innerHTML = "当前打开方式<b>存不住数据</b>（可能是文件预览 / 无痕模式）。请在 <b>Safari</b> 里打开再用，打卡才会保存。";
-      return;
-    }
-    if (!navigator.onLine) {
-      bar.classList.add("is-offline");
-      txt.innerHTML = "现在<b>没网 · 离线模式</b>：打卡、喂小蛋、快递都照常用，数据存这台手机里，有网没网都一样。";
-      return;
-    }
-    if (isFile) {
-      txt.innerHTML = "<b>离线文件版</b>：不用联网、不用登录就能用。数据只存这台手机，换打开方式要重新导入。";
-      return;
-    }
-    if (offlineReady) {
-      txt.innerHTML = "<b>核心文件已缓存</b>。iOS 27 真离线请用下方「下载离线单文件」：不用联网、不用登录，飞行模式也能打开。";
-    } else {
-      txt.innerHTML = "正在把页面存到手机…存好后请用下方「下载离线单文件」保存一份，iOS 27 断网就靠它打开。";
-    }
-  }
-  window.addEventListener("online", renderOfflineBar);
-  window.addEventListener("offline", renderOfflineBar);
-  document.addEventListener("visibilitychange", function(){ if (!document.hidden) renderOfflineBar(); });
-  renderOfflineBar();
   registerSW();
-  warmCache().then(function(ok){ if (ok) offlineReady = true; renderOfflineBar(); });
-  if ("serviceWorker" in navigator) {
-    try { navigator.serviceWorker.ready.then(function(){ offlineReady = true; renderOfflineBar(); }).catch(function(){}); } catch(e){}
-  }
+  warmCache();
 })();
 </script>
 </body>
